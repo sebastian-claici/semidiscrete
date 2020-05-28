@@ -1,0 +1,150 @@
+#+TITLE: semidiscrete
+#+OPTIONS: H:2 num:nil toc:t \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t
+#+OPTIONS: TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+LaTeX_HEADER: \usepackage{mathtools}
+#+LaTeX_HEADER: \usepackage{amsmath}
+#+LaTeX_HEADER: \usepackage{amssymb}
+#+SETUPFILE: https://fniessen.github.io/org-html-themes/setup/theme-readtheorg.setup
+
+*semidiscrete* is a header-only C++ library that solves the semidiscrete transport
+ equation using stochastic methods.
+
+*semidiscrete* depends only on [[http://eigen.tuxfamily.org/index.php?title=Main_Page][Eigen3]].
+
+* Semidiscrete transport functor
+Recall the semidiscrete transport equation:
+\begin{equation}
+\sum_{i=1}^n \alpha_i v_i - \int \min_i (\|x - x_i\|^2 - v_i) \,\mathrm{d}x
+.
+\end{equation}
+
+The core of *semidiscrete* is in the various optimization routines present in
+=include/optimize.hpp=. To use these routines, we must define a functor that
+represents the semidiscrete transport equation as a multivariate function that
+needs to be minimized. This functor records state about the function value and
+gradient at each point.
+
+The semidiscrete functor implements the equation above as:
+#+BEGIN_SRC c++ :exports code
+template <typename Sampler>
+class SemidiscreteTransport {
+private:
+  Sampler sampler;
+  int num_samples;
+
+public:
+  MatrixXd points;
+
+  SemidiscreteTransport(const Sampler &sampler_, const MatrixXd &points_,
+                        const int num_samples_)
+      : sampler(sampler_), num_samples(num_samples_), points(points_) {}
+
+  /**
+   * Compute the transport cost and gradient with given weights.
+   *
+   * @param w VectorXd Power cell weights, w_i is associated to x_i.
+   * @param grad VectorXd Gradient given by -1/n + density(x_i)
+   * */
+  double operator()(const VectorXd &w, VectorXd &grad) {
+    int num_points = points.cols();
+    for (int i = 0; i < num_points; ++i) {
+      grad[i] = -1.0 / num_points;
+    }
+
+    double fx = 0.0;
+    for (int i = 0; i < num_samples; ++i) {
+      auto p = sampler();
+
+      Eigen::VectorXd::Index min_pos;
+      auto dist =
+          ((points.colwise() - p).colwise().squaredNorm() - w.transpose())
+              .minCoeff(&min_pos);
+      fx += dist / num_samples;
+      grad[static_cast<int>(min_pos)] += 1.0 / num_samples;
+    }
+
+    return fx;
+  }
+};
+#+END_SRC
+
+This relies on a =Sampler= object that returns a sample point when called.
+
+* Samplers
+There are a few common distributions already implemented, including multivariate
+normal distributions, uniform distributions, and data distributions, and these
+can be combined into mixture distributions.
+
+To implement your own distribution, create a =class= or =struct= that implements a
+#+BEGIN_SRC c++
+Eigen::VectorXd operator()() const {  }
+#+END_SRC
+which returns a sample from the distribution as an =Eigen= vector.
+
+* Example
+A simple example uses the =AdamSolver= with default parameters on a Gaussian distribution
+and prints the number of iterations and estimated cost:
+
+#+BEGIN_SRC c++
+int main() {
+  // Compute the transport cost between 100 samples from a Gaussian and the distribution itself
+  int num_points = 100;
+  int num_samples = 10000;
+  int num_dim = 2;
+
+  // Want to approximate a Gaussian distribution
+  VectorXd mu1 = VectorXd::Zero(num_dim);
+  auto mu = MultivariateNormal(mu1, 1 * MatrixXd::Identity(num_dim, num_dim));
+
+  // Initial point positions
+  MatrixXd points = mu(num_points);
+  VectorXd weights = VectorXd::Zero(num_points);
+  // Define transport problem
+  SemidiscreteTransport<MultivariateNormal> problem(mu, points, num_samples);
+
+  // Setup Adam parameters and create solver
+  AdamParams params;
+  params.max_iterations = 200;
+  AdamSolver solver(params);
+
+  double fx;
+  int iters = solver.minimize(problem, weights, fx);
+
+  std::cout << iters << " iterations" << std::endl;
+  std::cout << "weights = \n" << weights.transpose() << std::endl;
+  std::cout << "cost = " << fx << std::endl;
+
+  return 0;
+}
+#+END_SRC
+
+This example can be compiled and run with CMake.
+
+#+BEGIN_SRC bash
+cmake .
+make
+./bin/test-semidiscrete
+#+END_SRC
+
+* Caveats
+The semidiscrete problem is a concave maximization problem that is twice
+differentiable. This makes it suitable to second order methods, but computing
+the Hessian of the cost requires integrating densities over measure 0 sets.
+While this can be done in 2 and 3 dimensions using [[https://doc.cgal.org/latest/Triangulation_2/classCGAL_1_1Regular__triangulation__2.html][power cell constructions]],
+extending this procedure to higher dimensions is difficult.
+
+This library implements only first order methods for solving the semidiscrete
+problem, and uses Monte Carlo integration to estimate densities of power cell
+regions.
+
+The estimation problems suffer inherently from curse of dimensionality, and
+convergence within numerical tolerance in high dimensions is unlikely. For this
+reason, you can set a maximum number of iterations for each optimization method,
+as well as a maximum wall clock time. For example:
+
+#+BEGIN_SRC c++
+// Setup Adam parameters and create solver
+AdamParams params;
+params.max_iterations = 200;
+params.max_time = 10; // in seconds
+#+END_SRC

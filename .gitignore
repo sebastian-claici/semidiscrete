@@ -1,0 +1,17 @@
+.DS_Store
+.idea
+*.log
+tmp/
+
+# C++ accoutrement
+.clangd/
+bin/
+CMakeFiles/
+*.cmake
+CMakeCache.txt
+
+# Data files
+data/
+results/
+/Makefile
+/compile_commands.json
