@@ -23,14 +23,21 @@ using Eigen::VectorXd;
 
 int main(int argc, const char *argv[]) {
   std::string datafile;
+  std::string outprefix;
   int num_points;
   int num_samples;
+
+  int max_time;
+  int max_iterations;
 
   po::options_description desc("Allowed options.");
   desc.add_options()
     ("datafile", po::value<std::string>(&datafile), "link to graph file")
+    ("outprefix", po::value<std::string>(&outprefix)->default_value("sample"), "prefix to results files")
     ("num_points", po::value<int>(&num_points)->default_value(100), "number of points in coreset")
-    ("num_samples", po::value<int>(&num_samples)->default_value(10000), "number of samples");
+    ("num_samples", po::value<int>(&num_samples)->default_value(10000), "number of samples")
+    ("max_time", po::value<int>(&max_time)->default_value(5), "maximum time (s) per weight solve")
+    ("max_iters", po::value<int>(&max_iterations)->default_value(1000), "maximum number of iterations per weight solve");
 
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -51,27 +58,21 @@ int main(int argc, const char *argv[]) {
   Eigen::IOFormat csv_fmt(Eigen::FullPrecision, Eigen::DontAlignCols, ",", "\n");
 
 #if DEBUG
-  std::cout << "|Point iteration|Time|Gradient norm|Number iterations|" << std::endl;
-  std::cout << "|-+-+-+-|" << std::endl;
+  std::cout << "|Point iteration|Time|Gradient norm|Cost delta|Number iterations|" << std::endl;
+  std::cout << "|-+-+-+-+-|" << std::endl;
 #endif
 
-  // Parameters for Anderson iteration
-  AndersonParams params;
-  params.max_iterations = 100;
-
-  // Choose line search method
-  DampenedLinesearch step_fn_dampened(10.0);
-  AndersonSolver<DampenedLinesearch> solver(params, step_fn_dampened);
-
-  // // AdamOptimizer
-  // AdamParams params;
-  // params.max_iterations = 1000;
-  // AdamSolver solver(params);
+  // AdamOptimizer
+  AdamParams params;
+  params.max_iterations = max_iterations;
+  params.max_time = max_time;
+  AdamSolver solver(params);
 
   // Maximum number of outer loop iterations (point updates)
-  int max_iters = 50;
+  int max_iters = 10;
 
-  double fx;
+  double fx = 0.0;
+  double fxp = fx;
   for (int iter = 1; iter <= max_iters; ++iter) {
     MatrixXd new_points = MatrixXd::Zero(num_dim, num_points);
     std::vector<double> densities(num_points, 0.0);
@@ -94,14 +95,17 @@ int main(int argc, const char *argv[]) {
     problem(weights, grad);
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tend_iter - tstart_iter).count();
 
-    std::cout << "|" << iter << "|" << duration / 1000. << "s|" << grad.norm() << "|" << num_iters << "|" << std::endl;
+    std::cout << "|" << iter << "|" << duration / 1000. << "s|" << grad.norm()
+              << "|" << std::abs(fx - fxp) << "|" << num_iters << "|" << std::endl;
+#endif
+    fxp = fx;
+    problem.points = new_points;
+  }
 
-    std::string filename = "./results/" + std::to_string(iter) + ".csv";
+#if DEBUG
+    std::string filename = "./results/" + outprefix + ".csv";
     std::ofstream fout(filename, std::ofstream::out);
     fout << problem.points.transpose().format(csv_fmt) << std::endl;
     fout.close();
 #endif
-
-    problem.points = new_points;
-  }
 }
