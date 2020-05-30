@@ -5,9 +5,9 @@ namespace semidiscrete {
 struct GradientParams {
   double epsilon;
   int max_iterations;
-  int max_time;
+  double max_time;
 
-  GradientParams(const double &epsilon_, const int &max_iterations_, const int& max_time_)
+  GradientParams(const double &epsilon_, const int &max_iterations_, const double& max_time_)
     : epsilon(epsilon_),
       max_iterations(max_iterations_),
       max_time(max_time_) {}
@@ -15,7 +15,7 @@ struct GradientParams {
   GradientParams()
     : epsilon(static_cast<double>(1e-6)),
       max_iterations(1000),
-      max_time(5) {}
+      max_time(5.0) {}
 };
 
 struct AndersonParams {
@@ -23,10 +23,10 @@ struct AndersonParams {
   double lambda;
   double epsilon;
   int max_iterations;
-  int max_time;
+  double max_time;
 
   AndersonParams(const int &m_, const double &lambda_, const double &epsilon_,
-                 const int &max_iterations_, const int &max_time_)
+                 const int &max_iterations_, const double &max_time_)
     : m(m_),
       lambda(lambda_),
       epsilon(epsilon_),
@@ -38,7 +38,7 @@ struct AndersonParams {
       lambda(static_cast<double>(0.01)),
       epsilon(static_cast<double>(1e-6)),
       max_iterations(100),
-      max_time(5) {}
+      max_time(5.0) {}
 };
 
 struct AdamParams {
@@ -46,7 +46,7 @@ struct AdamParams {
   double beta1, beta2;
   double epsilon;
   int max_iterations;
-  int max_time;
+  double max_time;
 
   AdamParams()
     : alpha(0.0001)
@@ -54,7 +54,7 @@ struct AdamParams {
     , beta2(0.999)
     , epsilon(1e-6)
     , max_iterations(1000)
-    , max_time(5) {}
+    , max_time(5.0) {}
 };
 }; // namespace semidiscrete
 
