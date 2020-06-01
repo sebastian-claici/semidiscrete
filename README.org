@@ -9,21 +9,40 @@
 *semidiscrete* is a header-only C++ library that solves the semidiscrete transport
  equation using stochastic methods.
 
-*semidiscrete* depends only on [[http://eigen.tuxfamily.org/index.php?title=Main_Page][Eigen3]].
+*semidiscrete* depends on [[http://eigen.tuxfamily.org/index.php?title=Main_Page][Eigen3]], [[https://www.boost.org/][Boost]], and [[https://www.cgal.org/][CGAL]].
+
+* Install
+The library is header only. To install the dependencies, run the following
+(valid as of <2020-05-31 Sun>):
+- Install Eigen from source
+#+BEGIN_SRC bash :exports code :results silent :var version="3.3.7" :dir resources
+wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
+tar xvf eigen-3.3.7.tar.gz
+cd eigen-3.3.7
+
+mkdir build && cd build
+cmake ..
+sudo make install
+#+END_SRC
+- Install boost and CGAL from =apt=
+#+BEGIN_SRC bash :exports code
+sudo apt install libboost-all-dev libcgal-dev
+#+END_SRC
 
 * Semidiscrete transport functor
 Recall the semidiscrete transport equation with squared Euclidean cost:
-#+BEGIN_SRC latex :exports none :file transport.png
+#+BEGIN_SRC latex :exports results :file resources/transport.png
 \begin{equation*}
-\sum_{i=1}^n \alpha_i v_i - \int \min_i\, (\|x - x_i\|^2 - v_i) \,\mathrm{d}x
+\sum_{i=1}^n \alpha_i v_i - \int \min_i\, (\|x - x_i\|^2 - v_i) \,\mathrm{d}\mu(x)
 .
 \end{equation*}
 #+END_SRC
 
-[[./transport.png]]
+[[./resources/transport.png]]
 
-The core of *semidiscrete* is in the various optimization routines present in
-=include/optimize.hpp=. To use these routines, we must define a functor that
+The goal of *semidiscrete* is to maximize this cost with respect to the $v_i$. To
+this end, I have implemented various optimization routines present in
+=include/optimize.hpp=. To use these routines, you must define a functor that
 represents the semidiscrete transport equation as a multivariate function that
 needs to be minimized. This functor records state about the function value and
 gradient at each point.
@@ -154,20 +173,3 @@ AdamParams params;
 params.max_iterations = 200;
 params.max_time = 10; // in seconds
 #+END_SRC
-* Quantization
-The *semidiscrete* transport problem can be used to quantize measures. A measure
-quantization is a choice of points
-
-#+BEGIN_SRC latex :exports none :file quantiles.png
-\begin{equation*}
-  x_1, \ldots, x_n
-\end{equation*}
-#+END_SRC
-that approximate the original measure $\mu$ under some metric. The metric we
-consider is the 2-Wasserstein distance between $\mu$ and the discrete
-distribution supported on the $x_i$:
-#+BEGIN_SRC latex :exports none :file quantization.png
-\min_{x_1, \ldots, x_n} W_2^2\left(\mu, \sum_{i=1}^n \delta_{x_i} \right)
-#+END_SRC
-
-#+RESULTS:
