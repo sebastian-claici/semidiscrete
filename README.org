@@ -31,7 +31,7 @@ sudo apt install libboost-all-dev libcgal-dev
 
 * Semidiscrete transport functor
 Recall the semidiscrete transport equation with squared Euclidean cost:
-#+BEGIN_SRC latex :exports results :file resources/transport.png
+#+BEGIN_SRC latex :exports results :file resources/transport.png :buffer no
 \begin{equation*}
 \sum_{i=1}^n \alpha_i v_i - \int \min_i\, (\|x - x_i\|^2 - v_i) \,\mathrm{d}\mu(x)
 .
