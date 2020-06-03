@@ -9,13 +9,13 @@
 *semidiscrete* is a header-only C++ library that solves the semidiscrete transport
  equation using stochastic methods.
 
-*semidiscrete* depends on [[http://eigen.tuxfamily.org/index.php?title=Main_Page][Eigen3]], [[https://www.boost.org/][Boost]], and [[https://www.cgal.org/][CGAL]].
+*semidiscrete* depends on [[http://eigen.tuxfamily.org/index.php?title=Main_Page][Eigen3]].
 
 * Install
 The library is header only. To install the dependencies, run the following
 (valid as of <2020-05-31 Sun>):
 - Install Eigen from source
-#+BEGIN_SRC bash :exports code :results silent :var version="3.3.7" :dir resources
+#+BEGIN_SRC zsh :exports code :results silent :var version="3.3.7" :dir resources
 wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz
 tar xvf eigen-3.3.7.tar.gz
 cd eigen-3.3.7
@@ -23,10 +23,6 @@ cd eigen-3.3.7
 mkdir build && cd build
 cmake ..
 sudo make install
-#+END_SRC
-- Install boost and CGAL from =apt=
-#+BEGIN_SRC bash :exports code
-sudo apt install libboost-all-dev libcgal-dev
 #+END_SRC
 
 * Semidiscrete transport functor
@@ -47,7 +43,8 @@ represents the semidiscrete transport equation as a multivariate function that
 needs to be minimized. This functor records state about the function value and
 gradient at each point.
 
-The semidiscrete functor implements the equation above as:
+The semidiscrete functor between a distribution \mu and a uniform distribution
+over a finite point set can be implemented as:
 #+BEGIN_SRC c++ :exports code
 template <typename Sampler>
 class SemidiscreteTransport {
@@ -63,18 +60,19 @@ public:
       : sampler(sampler_), num_samples(num_samples_), points(points_) {}
 
   /**
-   * Compute the transport cost and gradient with given weights.
-   *
-   * @param w VectorXd Power cell weights, w_i is associated to x_i.
-   * @param grad VectorXd Gradient given by -1/n + density(x_i)
-   * */
+   ,* Compute the transport cost and gradient with given weights.
+   ,*
+   ,* @param w VectorXd Power cell weights, w_i is associated to x_i.
+   ,* @param grad VectorXd Gradient given by -1/n + density(x_i)
+   ,* */
   double operator()(const VectorXd &w, VectorXd &grad) {
+    double fx = 0.0;
     int num_points = points.cols();
     for (int i = 0; i < num_points; ++i) {
       grad[i] = -1.0 / num_points;
+      fx -= 1.0 / num_points * w(i);
     }
 
-    double fx = 0.0;
     for (int i = 0; i < num_samples; ++i) {
       auto p = sampler();
 
@@ -92,14 +90,30 @@ public:
 #+END_SRC
 
 This relies on a =Sampler= object that returns a sample point when called.
+* Optimization routines
+This is a large work in progress, and will likely end up in its own package. For
+now here is a list of everything that is implemented and in progress:
+- Line searches
+  + [X] Backtracking line search
+  + [ ] Nocedal-Wright line search
+- First order methods
+  + [X] Gradient descent
+  + [X] Adam
+  + [X] Anderson acceleration
+  + [ ] Nesterov acceleration
+- Second order methods:
+  + [ ] Newton's method
+  + [ ] Quasi-Newton methods
+  + [ ] L-BFGS
+  + [ ] BFGS
 
 * Samplers
 There are a few common distributions already implemented, including multivariate
-normal distributions, uniform distributions, and data distributions, and these
-can be combined into mixture distributions.
+normal distributions, data distributions, and mixture distributions.
 
-To implement your own distribution, create a =class= or =struct= that implements two methods:
-#+BEGIN_SRC c++
+To implement your own distribution, create a =class= or =struct= that subclasses
+=Distribution= and implements two methods:
+#+BEGIN_SRC c++ :exports code
 Eigen::VectorXd operator()() const {  }
 Eigen::MatrixXd operator()(int n) const {  }
 #+END_SRC
@@ -110,7 +124,7 @@ second returns =n= samples from the distribution arranged in a =n \times d= Eige
 A simple example uses the =AdamSolver= with default parameters on a Gaussian distribution
 and prints the number of iterations and estimated cost:
 
-#+BEGIN_SRC c++
+#+BEGIN_SRC c++ :exports code
 int main() {
   // Compute the transport cost between 100 samples from a Gaussian and the distribution itself
   int num_points = 100;
@@ -129,7 +143,7 @@ int main() {
 
   // Setup Adam parameters and create solver
   AdamParams params;
-  params.max_iterations = 200;
+  params.max_iterations = 2000;
   AdamSolver solver(params);
 
   double fx;
@@ -145,7 +159,7 @@ int main() {
 
 This example can be compiled and run with CMake.
 
-#+BEGIN_SRC bash
+#+BEGIN_SRC zsh :exports code
 cmake .
 make
 ./bin/test-semidiscrete
@@ -167,7 +181,7 @@ convergence within numerical tolerance in high dimensions is unlikely. For this
 reason, you can set a maximum number of iterations for each optimization method,
 as well as a maximum wall clock time. For example:
 
-#+BEGIN_SRC c++
+#+BEGIN_SRC c++ :exports code
 // Setup Adam parameters and create solver
 AdamParams params;
 params.max_iterations = 200;
