@@ -49,6 +49,7 @@ public:
     for (int it = 0; it < params.max_iterations; ++it) {
       fx = f(x, gx);
       if (gx.norm() < params.epsilon) {
+        std::cout << "Gradient norm at convergence: " << gx.norm() << std::endl;
         return it + 1;
       }
 
@@ -62,6 +63,7 @@ public:
       }
       // break if gradient norm within tolerance
       if (gx.norm() < params.epsilon) {
+        std::cout << "Gradient norm at convergence: " << gx.norm() << std::endl;
         return it + 1;
       }
     }
@@ -140,6 +142,7 @@ public:
       }
       // break if gradient norm within tolerance
       if (gx.norm() < params.epsilon) {
+        std::cout << "Gradient norm at convergence: " << gx.norm() << std::endl;
         return it + 1;
       }
     }
@@ -181,6 +184,7 @@ public:
       fx = f(x, gx);
       // break if gradient norm within tolerance
       if (gx.norm() < params.epsilon) {
+        std::cout << "Gradient norm at convergence: " << gx.norm() << std::endl;
         return it + 1;
       }
 
