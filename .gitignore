@@ -15,3 +15,6 @@ data/
 results/
 /Makefile
 /compile_commands.json
+/scripts/
+/env/
+/__pycache__/
