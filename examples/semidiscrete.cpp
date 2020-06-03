@@ -1,6 +1,7 @@
 #include "functors.hpp"
 #include "linesearch.hpp"
 #include "optimize.hpp"
+#include "params.hpp"
 #include "samplers.hpp"
 
 #include <algorithm>
@@ -16,7 +17,7 @@ using Eigen::VectorXd;
 
 int main() {
   // Compute the transport cost between 100 samples from a Gaussian and the distribution itself
-  int num_points = 100;
+  int num_points = 20;
   int num_samples = 10000;
   int num_dim = 2;
 
@@ -30,20 +31,23 @@ int main() {
   // Define transport problem
   SemidiscreteTransport<MultivariateNormal> problem(mu, points, num_samples);
 
-  // Setup Adam parameters and create solver
-  AdamParams params;
+  // Setup Anderson acceleration parameters and create solver
+  AndersonParams params;
   params.max_iterations = 200;
-  AdamSolver solver(params);
+  params.max_time = 20.0;
+  DampenedLinesearch linesearch(10.0);
+  AndersonSolver<DampenedLinesearch> solver(params, linesearch);
 
   VectorXd gw(weights.size());
   double fx = problem(weights, gw);
-  std::cout << "cost (at start) = " << fx << std::endl << std::endl;
+  std::cout << "gradient norm (at start) = " << gw.norm() << std::endl << std::endl;
 
   int iters = solver.minimize(problem, weights, fx);
 
+  problem(weights, gw);
   std::cout << iters << " iterations" << std::endl;
+  std::cout << "gradient norm = " << gw.norm() << std::endl;
   std::cout << "weights = \n" << weights.transpose() << std::endl;
-  std::cout << "cost = " << fx << std::endl;
 
   return 0;
 }
