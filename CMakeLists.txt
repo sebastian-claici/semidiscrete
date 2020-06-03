@@ -10,15 +10,8 @@ set(CMAKE_LibRARY_OUTPUT_DIRECTORY lib)
 
 include_directories(${PROJECT_SOURCE_DIR}/include)
 
-# Boost (for program_options)
-find_package(Boost COMPONENTS program_options filesystem REQUIRED)
-include_directories(${Boost_INCLUDE_DIR})
-
 # Eigen for linear algebra
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
 
 add_executable(test-semidiscrete examples/semidiscrete.cpp)
-add_executable(test-coreset examples/coresets.cpp)
-
 target_link_libraries(test-semidiscrete LINK_PUBLIC Eigen3::Eigen)
-target_link_libraries(test-coreset LINK_PUBLIC Eigen3::Eigen ${Boost_LIBRARIES})
