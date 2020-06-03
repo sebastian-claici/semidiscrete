@@ -40,7 +40,7 @@ Recall the semidiscrete transport equation with squared Euclidean cost:
 
 [[./resources/transport.png]]
 
-The goal of *semidiscrete* is to maximize this cost with respect to the $v_i$. To
+The goal of *semidiscrete* is to maximize this cost with respect to the =v_i=. To
 this end, I have implemented various optimization routines present in
 =include/optimize.hpp=. To use these routines, you must define a functor that
 represents the semidiscrete transport equation as a multivariate function that
@@ -104,7 +104,7 @@ Eigen::VectorXd operator()() const {  }
 Eigen::MatrixXd operator()(int n) const {  }
 #+END_SRC
 The first returns a single sample from the distribution as an Eigen vector. The
-second returns $n$ samples from the distribution arranged in a $n\times d$ Eigen matrix.
+second returns =n= samples from the distribution arranged in a =n \times d= Eigen matrix.
 
 * Example
 A simple example uses the =AdamSolver= with default parameters on a Gaussian distribution
