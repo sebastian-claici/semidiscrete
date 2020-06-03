@@ -100,6 +100,7 @@ public:
     for (int i = 0; i < num_samples / minibatch_size; ++i) {
       auto ps = sampler(minibatch_size);
 
+#pragma omp parallel for
       for (int bi = 0; bi < minibatch_size; ++bi) {
         Eigen::VectorXd::Index min_pos;
         auto dist = ((points.colwise() - ps.col(bi)).colwise().squaredNorm() -
